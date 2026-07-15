@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Metodología diaria</title>
+<style>
+  :root{
+    --bg:#F7F7F5;
+    --card:#FFFFFF;
+    --text:#1C1C1A;
+    --text-muted:#8A8A85;
+    --border:rgba(0,0,0,0.07);
+    --radius:16px;
+    --trabajo-bg:#E8ECFF; --trabajo-fg:#3346B3; --trabajo-mid:#4C6FFF;
+    --familia-bg:#E3F7EC; --familia-fg:#127A4B; --familia-mid:#22A06B;
+    --salud-bg:#FDEEE0;   --salud-fg:#B45E12;   --salud-mid:#F2994A;
+    --hogar-bg:#FDF6DC;   --hogar-fg:#8A6B0A;   --hogar-mid:#E8B923;
+    --comida-bg:#F3E8FA;  --comida-fg:#6C3483;  --comida-mid:#9B59B6;
+    --descanso-bg:#EFEFED;--descanso-fg:#6B6B66; --descanso-mid:#9AA0A6;
+    --contenido-bg:#FBF1DC;--contenido-fg:#8A6412; --contenido-mid:#D4A032;
+  }
+  * { box-sizing:border-box; }
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    padding:28px 20px 60px;
+  }
+  .wrap{ max-width:960px; margin:0 auto; }
+  h1{ font-size:22px; font-weight:600; margin:0 0 4px; letter-spacing:-0.01em; }
+  .sub{ font-size:14px; color:var(--text-muted); margin:0 0 24px; }
+
+  .tabs{ display:flex; gap:6px; margin-bottom:22px; flex-wrap:wrap; }
+  .tab{
+    padding:9px 16px; border-radius:999px; font-size:14px; font-weight:500;
+    background:var(--card); border:1px solid var(--border); color:var(--text-muted);
+    cursor:pointer; transition:all .15s ease; user-select:none;
+  }
+  .tab.active{ background:var(--text); color:#fff; border-color:var(--text); }
+  .tab:hover:not(.active){ border-color:rgba(0,0,0,0.18); color:var(--text); }
+
+  .view{ display:none; }
+  .view.active{ display:block; }
+
+  .days{ display:grid; grid-template-columns:repeat(7,1fr); gap:12px; }
+  @media (max-width:900px){ .days{ grid-template-columns:repeat(2,1fr); } }
+  .days.day-mode{ grid-template-columns:1fr; max-width:340px; }
+
+  .week-controls{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:14px; flex-wrap:wrap; }
+  .mode-toggle{ display:flex; gap:4px; background:var(--card); border:1px solid var(--border); border-radius:999px; padding:3px; }
+  .mode-btn{ border:none; background:transparent; padding:6px 14px; border-radius:999px; font-size:12px; font-weight:600; color:var(--text-muted); cursor:pointer; }
+  .mode-btn.active{ background:var(--text); color:#fff; }
+  .day-pills{ display:flex; gap:6px; flex-wrap:wrap; }
+  .day-pill{ border:1px solid var(--border); background:var(--card); border-radius:999px; padding:6px 12px; font-size:12px; font-weight:600; color:var(--text-muted); cursor:pointer; }
+  .day-pill.active{ background:var(--text); color:#fff; border-color:var(--text); }
+  .day-col{ display:flex; flex-direction:column; gap:8px; }
+  .day-title{
+    font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:.04em;
+    color:var(--text-muted); padding:0 2px 4px; border-bottom:1px solid var(--border);
+    margin-bottom:2px;
+  }
+  .block{
+    border-radius:var(--radius); padding:10px 12px; position:relative;
+    display:flex; flex-direction:column; gap:2px; min-height:44px; justify-content:center;
+  }
+  .block .time{ font-size:11px; font-weight:500; opacity:.75; }
+  .block select{
+    appearance:none; -webkit-appearance:none; border:none; background:transparent;
+    font-size:13px; font-weight:600; padding:0; margin:0; width:100%; cursor:pointer;
+    color:inherit; font-family:inherit;
+  }
+  .block select:focus{ outline:none; }
+  .block .del-block{
+    position:absolute; top:6px; right:6px; width:18px; height:18px; border-radius:50%;
+    border:none; background:rgba(0,0,0,0.08); color:inherit; font-size:11px; line-height:1;
+    cursor:pointer; display:flex; align-items:center; justify-content:center; opacity:.6;
+  }
+  .block .del-block:hover{ opacity:1; background:rgba(0,0,0,0.18); }
+
+  .add-block-btn{
+    border:1.5px dashed var(--border); border-radius:var(--radius); background:transparent;
+    color:var(--text-muted); font-size:12px; font-weight:500; padding:8px; cursor:pointer;
+    text-align:center;
+  }
+  .add-block-btn:hover{ border-color:rgba(0,0,0,0.25); color:var(--text); }
+  .add-block-form{
+    background:var(--card); border:1px solid var(--border); border-radius:var(--radius);
+    padding:10px; display:flex; flex-direction:column; gap:6px;
+  }
+  .add-block-form label{ font-size:10px; font-weight:600; color:var(--text-muted); text-transform:uppercase; }
+  .add-block-form input[type=time], .add-block-form select{
+    width:100%; padding:6px 8px; border-radius:8px; border:1px solid var(--border);
+    font-size:13px; font-family:inherit; background:var(--bg); color:var(--text);
+  }
+  .add-block-form .btn-row{ display:flex; gap:6px; margin-top:2px; }
+  .add-block-form button{
+    flex:1; border:none; border-radius:8px; padding:7px; font-size:12px; font-weight:600;
+    cursor:pointer; font-family:inherit;
+  }
+  .add-block-form .save-btn{ background:var(--text); color:#fff; }
+  .add-block-form .cancel-btn{ background:transparent; color:var(--text-muted); }
+
+  .cat-trabajo   { background:var(--trabajo-bg);   color:var(--trabajo-fg); }
+  .cat-familia   { background:var(--familia-bg);   color:var(--familia-fg); }
+  .cat-salud     { background:var(--salud-bg);     color:var(--salud-fg); }
+  .cat-hogar     { background:var(--hogar-bg);     color:var(--hogar-fg); }
+  .cat-comida    { background:var(--comida-bg);    color:var(--comida-fg); }
+  .cat-descanso  { background:var(--descanso-bg);  color:var(--descanso-fg); }
+  .cat-contenido { background:var(--contenido-bg); color:var(--contenido-fg); }
+
+  .legend{ display:flex; flex-wrap:wrap; gap:8px; margin:20px 0 4px; }
+  .chip{ font-size:12px; font-weight:500; padding:5px 12px; border-radius:999px; }
+
+  /* Tasks / habits */
+  .list-card{
+    background:var(--card); border:1px solid var(--border); border-radius:var(--radius);
+    padding:6px; margin-bottom:10px;
+  }
+  .row{
+    display:grid; grid-template-columns:1fr repeat(7,34px) 60px; align-items:center;
+    gap:6px; padding:8px 10px; border-radius:12px;
+  }
+  .row.header{ font-size:11px; font-weight:600; color:var(--text-muted); text-transform:uppercase; letter-spacing:.03em; }
+  .row input[type=text]{
+    border:none; background:transparent; font-size:14px; font-weight:500; color:var(--text);
+    font-family:inherit; padding:4px 2px; width:100%;
+  }
+  .row input[type=text]:focus{ outline:none; background:var(--bg); border-radius:8px; }
+  .check{
+    width:26px; height:26px; border-radius:8px; border:1.5px solid var(--border);
+    background:#fff; cursor:pointer; display:flex; align-items:center; justify-content:center;
+    font-size:14px; color:transparent; font-weight:700; transition:all .12s ease; justify-self:center;
+  }
+  .check.on{ background:var(--familia-mid); border-color:var(--familia-mid); color:#fff; }
+  .pct{ font-size:13px; font-weight:600; text-align:right; color:var(--text-muted); }
+  .add-row{
+    display:flex; align-items:center; gap:8px; padding:10px 10px; font-size:13px;
+    color:var(--text-muted); cursor:pointer; font-weight:500;
+  }
+  .add-row:hover{ color:var(--text); }
+  .del{
+    width:20px; height:20px; border-radius:6px; border:none; background:transparent;
+    color:var(--text-muted); cursor:pointer; font-size:14px; justify-self:center;
+  }
+  .del:hover{ color:#C0392B; }
+
+  .summary{ display:grid; grid-template-columns:repeat(7,1fr); gap:8px; margin-top:4px; }
+  @media (max-width:900px){ .summary{ grid-template-columns:repeat(2,1fr); } }
+  .summary .cell{
+    background:var(--card); border:1px solid var(--border); border-radius:12px;
+    padding:10px; text-align:center;
+  }
+  .summary .cell .d{ font-size:11px; color:var(--text-muted); font-weight:600; text-transform:uppercase; }
+  .summary .cell .v{ font-size:18px; font-weight:600; margin-top:2px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Mi metodología diaria</h1>
+  <p class="sub">Cronograma, tareas y hábitos — editalo a tu gusto. Se guarda solo en este dispositivo.</p>
+
+  <div class="tabs">
+    <div class="tab active" data-tab="semana1">Semana 1</div>
+    <div class="tab" data-tab="semana2">Semana 2</div>
+    <div class="tab" data-tab="semana3">Semana 3</div>
+    <div class="tab" data-tab="semana4">Semana 4</div>
+    <div class="tab" data-tab="tareas">Tareas</div>
+    <div class="tab" data-tab="habitos">Hábitos</div>
+  </div>
+
+  <div id="semana1" class="view active"><div class="week-controls"></div><div class="days"></div><div class="legend"></div></div>
+  <div id="semana2" class="view"><div class="week-controls"></div><div class="days"></div><div class="legend"></div></div>
+  <div id="semana3" class="view"><div class="week-controls"></div><div class="days"></div><div class="legend"></div></div>
+  <div id="semana4" class="view"><div class="week-controls"></div><div class="days"></div><div class="legend"></div></div>
+
+  <div id="tareas" class="view">
+    <div class="list-card" id="tareas-card"></div>
+    <div class="summary" id="tareas-summary"></div>
+  </div>
+
+  <div id="habitos" class="view">
+    <div class="list-card" id="habitos-card"></div>
+    <div class="summary" id="habitos-summary"></div>
+  </div>
+</div>
+
+<script>
+const DAYS = ["LUNES","MARTES","MIERCOLES","JUEVES","VIERNES","SABADO","DOMINGO"];
+const DAYS_SHORT = ["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"];
+
+const CATEGORIES = {
+  "TRABAJO":["Trabajo","cat-trabajo"], "ESTUDIO":["Trabajo","cat-trabajo"],
+  "EJERCICIO":["Salud","cat-salud"],
+  "DESAYUNO":["Comida","cat-comida"], "ALMUERZO":["Comida","cat-comida"], "CENA":["Comida","cat-comida"], "MERIENDA":["Comida","cat-comida"],
+  "ORDEN":["Hogar","cat-hogar"], "COMPRAS":["Hogar","cat-hogar"], "COCINAR":["Hogar","cat-hogar"],
+  "FAMILIA":["Familia","cat-familia"], "TIEMPO LIBRE":["Ocio","cat-contenido"],
+  "DESCANSO":["Descanso","cat-descanso"]
+};
+const ACTIVITY_LIST = Object.keys(CATEGORIES);
+
+const DEFAULT_SCHEDULE = {"Semana 1": {"LUNES": [{"start": "07:00", "end": "08:00", "activity": "DESAYUNO"}, {"start": "08:00", "end": "09:00", "activity": "EJERCICIO"}, {"start": "09:00", "end": "13:00", "activity": "TRABAJO"}, {"start": "13:00", "end": "14:00", "activity": "ALMUERZO"}, {"start": "14:00", "end": "18:00", "activity": "TRABAJO"}, {"start": "18:00", "end": "19:00", "activity": "ORDEN"}, {"start": "19:00", "end": "20:00", "activity": "TIEMPO LIBRE"}, {"start": "20:00", "end": "21:00", "activity": "CENA"}, {"start": "21:00", "end": "22:00", "activity": "DESCANSO"}], "MARTES": [{"start": "07:00", "end": "08:00", "activity": "DESAYUNO"}, {"start": "08:00", "end": "09:00", "activity": "EJERCICIO"}, {"start": "09:00", "end": "13:00", "activity": "TRABAJO"}, {"start": "13:00", "end": "14:00", "activity": "ALMUERZO"}, {"start": "14:00", "end": "18:00", "activity": "TRABAJO"}, {"start": "18:00", "end": "19:00", "activity": "ORDEN"}, {"start": "19:00", "end": "20:00", "activity": "TIEMPO LIBRE"}, {"start": "20:00", "end": "21:00", "activity": "CENA"}, {"start": "21:00", "end": "22:00", "activity": "DESCANSO"}], "MIERCOLES": [{"start": "07:00", "end": "08:00", "activity": "DESAYUNO"}, {"start": "08:00", "end": "09:00", "activity": "EJERCICIO"}, {"start": "09:00", "end": "13:00", "activity": "TRABAJO"}, {"start": "13:00", "end": "14:00", "activity": "ALMUERZO"}, {"start": "14:00", "end": "18:00", "activity": "TRABAJO"}, {"start": "18:00", "end": "19:00", "activity": "ORDEN"}, {"start": "19:00", "end": "20:00", "activity": "TIEMPO LIBRE"}, {"start": "20:00", "end": "21:00", "activity": "CENA"}, {"start": "21:00", "end": "22:00", "activity": "DESCANSO"}], "JUEVES": [{"start": "07:00", "end": "08:00", "activity": "DESAYUNO"}, {"start": "08:00", "end": "09:00", "activity": "EJERCICIO"}, {"start": "09:00", "end": "13:00", "activity": "TRABAJO"}, {"start": "13:00", "end": "14:00", "activity": "ALMUERZO"}, {"start": "14:00", "end": "18:00", "activity": "TRABAJO"}, {"start": "18:00", "end": "19:00", "activity": "ORDEN"}, {"start": "19:00", "end": "20:00", "activity": "TIEMPO LIBRE"}, {"start": "20:00", "end": "21:00", "activity": "CENA"}, {"start": "21:00", "end": "22:00", "activity": "DESCANSO"}], "VIERNES": [{"start": "07:00", "end": "08:00", "activity": "DESAYUNO"}, {"start": "08:00", "end": "09:00", "activity": "EJERCICIO"}, {"start": "09:00", "end": "13:00", "activity": "TRABAJO"}, {"start": "13:00", "end": "14:00", "activity": "ALMUERZO"}, {"start": "14:00", "end": "18:00", "activity": "TRABAJO"}, {"start": "18:00", "end": "19:00", "activity": "ORDEN"}, {"start": "19:00", "end": "20:00", "activity": "TIEMPO LIBRE"}, {"start": "20:00", "end": "21:00", "activity": "CENA"}, {"start": "21:00", "end": "22:00", "activity": "DESCANSO"}], "SABADO": [{"start": "08:00", "end": "09:00", "activity": "DESAYUNO"}, {"start": "09:00", "end": "11:00", "activity": "TIEMPO LIBRE"}, {"start": "11:00", "end": "13:00", "activity": "ORDEN"}, {"start": "13:00", "end": "14:00", "activity": "ALMUERZO"}, {"start": "14:00", "end": "18:00", "activity": "DESCANSO"}, {"start": "18:00", "end": "20:00", "activity": "TIEMPO LIBRE"}, {"start": "20:00", "end": "21:00", "activity": "CENA"}], "DOMINGO": [{"start": "08:00", "end": "09:00", "activity": "DESAYUNO"}, {"start": "09:00", "end": "11:00", "activity": "TIEMPO LIBRE"}, {"start": "11:00", "end": "13:00", "activity": "ORDEN"}, {"start": "13:00", "end": "14:00", "activity": "ALMUERZO"}, {"start": "14:00", "end": "18:00", "activity": "DESCANSO"}, {"start": "18:00", "end": "20:00", "activity": "TIEMPO LIBRE"}, {"start": "20:00", "end": "21:00", "activity": "CENA"}]}, "Semana 2": {"LUNES": [{"start": "07:00", "end": "08:00", "activity": "DESAYUNO"}, {"start": "08:00", "end": "09:00", "activity": "EJERCICIO"}, {"start": "09:00", "end": "13:00", "activity": "TRABAJO"}, {"start": "13:00", "end": "14:00", "activity": "ALMUERZO"}, {"start": "14:00", "end": "18:00", "activity": "TRABAJO"}, {"start": "18:00", "end": "19:00", "activity": "ORDEN"}, {"start": "19:00", "end": "20:00", "activity": "TIEMPO LIBRE"}, {"start": "20:00", "end": "21:00", "activity": "CENA"}, {"start": "21:00", "end": "22:00", "activity": "DESCANSO"}], "MARTES": [{"start": "07:00", "end": "08:00", "activity": "DESAYUNO"}, {"start": "08:00", "end": "09:00", "activity": "EJERCICIO"}, {"start": "09:00", "end": "13:00", "activity": "TRABAJO"}, {"start": "13:00", "end": "14:00", "activity": "ALMUERZO"}, {"start": "14:00", "end": "18:00", "activity": "TRABAJO"}, {"start": "18:00", "end": "19:00", "activity": "ORDEN"}, {"start": "19:00", "end": "20:00", "activity": "TIEMPO LIBRE"}, {"start": "20:00", "end": "21:00", "activity": "CENA"}, {"start": "21:00", "end": "22:00", "activity": "DESCANSO"}], "MIERCOLES": [{"start": "07:00", "end": "08:00", "activity": "DESAYUNO"}, {"start": "08:00", "end": "09:00", "activity": "EJERCICIO"}, {"start": "09:00", "end": "13:00", "activity": "TRABAJO"}, {"start": "13:00", "end": "14:00", "activity": "ALMUERZO"}, {"start": "14:00", "end": "18:00", "activity": "TRABAJO"}, {"start": "18:00", "end": "19:00", "activity": "ORDEN"}, {"start": "19:00", "end": "20:00", "activity": "TIEMPO LIBRE"}, {"start": "20:00", "end": "21:00", "activity": "CENA"}, {"start": "21:00", "end": "22:00", "activity": "DESCANSO"}], "JUEVES": [{"start": "07:00", "end": "08:00", "activity": "DESAYUNO"}, {"start": "08:00", "end": "09:00", "activity": "EJERCICIO"}, {"start": "09:00", "end": "13:00", "activity": "TRABAJO"}, {"start": "13:00", "end": "14:00", "activity": "ALMUERZO"}, {"start": "14:00", "end": "18:00", "activity": "TRABAJO"}, {"start": "18:00", "end": "19:00", "activity": "ORDEN"}, {"start": "19:00", "end": "20:00", "activity": "TIEMPO LIBRE"}, {"start": "20:00", "end": "21:00", "activity": "CENA"}, {"start": "21:00", "end": "22:00", "activity": "DESCANSO"}], "VIERNES": [{"start": "07:00", "end": "08:00", "activity": "DESAYUNO"}, {"start": "08:00", "end": "09:00", "activity": "EJERCICIO"}, {"start": "09:00", "end": "13:00", "activity": "TRABAJO"}, {"start": "13:00", "end": "14:00", "activity": "ALMUERZO"}, {"start": "14:00", "end": "18:00", "activity": "TRABAJO"}, {"start": "18:00", "end": "19:00", "activity": "ORDEN"}, {"start": "19:00", "end": "20:00", "activity": "TIEMPO LIBRE"}, {"start": "20:00", "end": "21:00", "activity": "CENA"}, {"start": "21:00", "end": "22:00", "activity": "DESCANSO"}], "SABADO": [{"start": "08:00", "end": "09:00", "activity": "DESAYUNO"}, {"start": "09:00", "end": "11:00", "activity": "TIEMPO LIBRE"}, {"start": "11:00", "end": "13:00", "activity": "ORDEN"}, {"start": "13:00", "end": "14:00", "activity": "ALMUERZO"}, {"start": "14:00", "end": "18:00", "activity": "DESCANSO"}, {"start": "18:00", "end": "20:00", "activity": "TIEMPO LIBRE"}, {"start": "20:00", "end": "21:00", "activity": "CENA"}], "DOMINGO": [{"start": "08:00", "end": "09:00", "activity": "DESAYUNO"}, {"start": "09:00", "end": "11:00", "activity": "TIEMPO LIBRE"}, {"start": "11:00", "end": "13:00", "activity": "ORDEN"}, {"start": "13:00", "end": "14:00", "activity": "ALMUERZO"}, {"start": "14:00", "end": "18:00", "activity": "DESCANSO"}, {"start": "18:00", "end": "20:00", "activity": "TIEMPO LIBRE"}, {"start": "20:00", "end": "21:00", "activity": "CENA"}]}, "Semana 3": {"LUNES": [], "MARTES": [], "MIERCOLES": [], "JUEVES": [], "VIERNES": [], "SABADO": [], "DOMINGO": []}, "Semana 4": {"LUNES": [], "MARTES": [], "MIERCOLES": [], "JUEVES": [], "VIERNES": [], "SABADO": [], "DOMINGO": []}};
+
+const DEFAULT_TASKS = [
+  {id:"t1", name:"", days:[false,false,false,false,false,false,false]}
+];
+const DEFAULT_HABITS = [
+  {id:"h1", name:"", days:[false,false,false,false,false,false,false]}
+];
+
+let state = {
+  schedule: JSON.parse(JSON.stringify(DEFAULT_SCHEDULE)),
+  tareas: JSON.parse(JSON.stringify(DEFAULT_TASKS)),
+  habitos: JSON.parse(JSON.stringify(DEFAULT_HABITS))
+};
+
+async function loadState(){
+  try{
+    const raw = localStorage.getItem('planner-state');
+    if(raw){ state = JSON.parse(raw); }
+  }catch(e){ console.warn('Este navegador bloquea el guardado local; los cambios no van a persistir al recargar.', e); }
+  try{ renderAll(); }
+  catch(e){ console.error('Error al renderizar', e); }
+}
+async function saveState(){
+  try{ localStorage.setItem('planner-state', JSON.stringify(state)); }
+  catch(e){ /* guardado no disponible en este navegador, seguimos sin romper la app */ }
+}
+
+function showAddBlockForm(col, weekKey, day, containerId, addBtn){
+  if(col.querySelector('.add-block-form')) return; // already open
+  addBtn.style.display = 'none';
+
+  const form = document.createElement('div');
+  form.className = 'add-block-form';
+
+  const startLabel = document.createElement('label'); startLabel.textContent = 'Desde';
+  const startInput = document.createElement('input'); startInput.type = 'time'; startInput.value = '09:00';
+  const endLabel = document.createElement('label'); endLabel.textContent = 'Hasta';
+  const endInput = document.createElement('input'); endInput.type = 'time'; endInput.value = '10:00';
+  const actLabel = document.createElement('label'); actLabel.textContent = 'Actividad';
+  const actSelect = document.createElement('select');
+  ACTIVITY_LIST.forEach(a => {
+    const opt = document.createElement('option');
+    opt.value = a; opt.textContent = a;
+    actSelect.appendChild(opt);
+  });
+
+  form.appendChild(startLabel); form.appendChild(startInput);
+  form.appendChild(endLabel); form.appendChild(endInput);
+  form.appendChild(actLabel); form.appendChild(actSelect);
+
+  const btnRow = document.createElement('div');
+  btnRow.className = 'btn-row';
+  const saveBtn = document.createElement('button');
+  saveBtn.className = 'save-btn'; saveBtn.textContent = 'Agregar';
+  saveBtn.addEventListener('click', () => {
+    if(!startInput.value || !endInput.value){ return; }
+    if(endInput.value <= startInput.value){ alert('La hora de fin debe ser posterior a la de inicio.'); return; }
+    state.schedule[weekKey][day].push({start: startInput.value, end: endInput.value, activity: actSelect.value});
+    state.schedule[weekKey][day].sort((a,b) => a.start.localeCompare(b.start));
+    saveState();
+    renderWeek(weekKey, containerId);
+  });
+  const cancelBtn = document.createElement('button');
+  cancelBtn.className = 'cancel-btn'; cancelBtn.textContent = 'Cancelar';
+  cancelBtn.addEventListener('click', () => {
+    renderWeek(weekKey, containerId);
+  });
+  btnRow.appendChild(saveBtn); btnRow.appendChild(cancelBtn);
+  form.appendChild(btnRow);
+
+  col.appendChild(form);
+}
+
+const uiState = {}; // { containerId: { mode: 'week'|'day', day: 'LUNES' } }
+
+function renderWeekControls(weekKey, containerId){
+  if(!uiState[containerId]) uiState[containerId] = { mode: 'week', day: 'LUNES' };
+  const ui = uiState[containerId];
+  const bar = document.querySelector('#' + containerId + ' .week-controls');
+  bar.innerHTML = '';
+
+  const toggle = document.createElement('div');
+  toggle.className = 'mode-toggle';
+  const weekBtn = document.createElement('button');
+  weekBtn.className = 'mode-btn' + (ui.mode === 'week' ? ' active' : '');
+  weekBtn.textContent = 'Semana completa';
+  weekBtn.addEventListener('click', () => { ui.mode = 'week'; renderWeek(weekKey, containerId); });
+  const dayBtn = document.createElement('button');
+  dayBtn.className = 'mode-btn' + (ui.mode === 'day' ? ' active' : '');
+  dayBtn.textContent = 'Vista diaria';
+  dayBtn.addEventListener('click', () => { ui.mode = 'day'; renderWeek(weekKey, containerId); });
+  toggle.appendChild(weekBtn); toggle.appendChild(dayBtn);
+  bar.appendChild(toggle);
+
+  if(ui.mode === 'day'){
+    const pills = document.createElement('div');
+    pills.className = 'day-pills';
+    DAYS.forEach((day, di) => {
+      const pill = document.createElement('div');
+      pill.className = 'day-pill' + (ui.day === day ? ' active' : '');
+      pill.textContent = DAYS_SHORT[di];
+      pill.addEventListener('click', () => { ui.day = day; renderWeek(weekKey, containerId); });
+      pills.appendChild(pill);
+    });
+    bar.appendChild(pills);
+  }
+}
+
+function renderDayColumn(col, weekKey, day, containerId){
+  if(!state.schedule[weekKey][day]) state.schedule[weekKey][day] = [];
+  const blocks = state.schedule[weekKey][day];
+  blocks.forEach((b, bi) => {
+    const cat = CATEGORIES[b.activity] || ["Otro","cat-descanso"];
+    const div = document.createElement('div');
+    div.className = 'block ' + cat[1];
+    const t = document.createElement('div');
+    t.className = 'time';
+    t.textContent = b.start + '\u2013' + b.end;
+    div.appendChild(t);
+    const sel = document.createElement('select');
+    ACTIVITY_LIST.forEach(a => {
+      const opt = document.createElement('option');
+      opt.value = a; opt.textContent = a;
+      if(a === b.activity) opt.selected = true;
+      sel.appendChild(opt);
+    });
+    sel.addEventListener('change', (e) => {
+      state.schedule[weekKey][day][bi].activity = e.target.value;
+      saveState();
+      renderWeek(weekKey, containerId);
+    });
+    div.appendChild(sel);
+
+    const del = document.createElement('button');
+    del.className = 'del-block';
+    del.textContent = '\u00d7';
+    del.title = 'Borrar bloque';
+    del.addEventListener('click', () => {
+      state.schedule[weekKey][day].splice(bi, 1);
+      saveState();
+      renderWeek(weekKey, containerId);
+    });
+    div.appendChild(del);
+
+    col.appendChild(div);
+  });
+
+  const addBtn = document.createElement('div');
+  addBtn.className = 'add-block-btn';
+  addBtn.textContent = '+ Agregar bloque';
+  addBtn.addEventListener('click', () => {
+    showAddBlockForm(col, weekKey, day, containerId, addBtn);
+  });
+  col.appendChild(addBtn);
+}
+
+function renderWeek(weekKey, containerId){
+  if(!state.schedule[weekKey]) state.schedule[weekKey] = {};
+  renderWeekControls(weekKey, containerId);
+
+  const ui = uiState[containerId];
+  const el = document.querySelector('#' + containerId + ' .days');
+  el.innerHTML = '';
+  el.className = 'days' + (ui.mode === 'day' ? ' day-mode' : '');
+
+  if(ui.mode === 'day'){
+    const day = ui.day;
+    const col = document.createElement('div');
+    col.className = 'day-col';
+    const title = document.createElement('div');
+    title.className = 'day-title';
+    title.textContent = DAYS[DAYS.indexOf(day)];
+    col.appendChild(title);
+    renderDayColumn(col, weekKey, day, containerId);
+    el.appendChild(col);
+  } else {
+    DAYS.forEach((day, di) => {
+      const col = document.createElement('div');
+      col.className = 'day-col';
+      const title = document.createElement('div');
+      title.className = 'day-title';
+      title.textContent = DAYS_SHORT[di];
+      col.appendChild(title);
+      renderDayColumn(col, weekKey, day, containerId);
+      el.appendChild(col);
+    });
+  }
+
+  const legendEl = document.querySelector('#' + containerId + ' .legend');
+  legendEl.innerHTML = '';
+  const seen = new Set();
+  Object.values(CATEGORIES).forEach(([name, cls]) => {
+    if(seen.has(name)) return;
+    seen.add(name);
+    const chip = document.createElement('span');
+    chip.className = 'chip ' + cls;
+    chip.textContent = name;
+    legendEl.appendChild(chip);
+  });
+}
+
+function renderChecklist(kind){
+  const items = state[kind];
+  const cardId = kind + '-card';
+  const summaryId = kind + '-summary';
+  const card = document.getElementById(cardId);
+  card.innerHTML = '';
+
+  const header = document.createElement('div');
+  header.className = 'row header';
+  header.innerHTML = '<div>' + (kind === 'tareas' ? 'Tarea' : 'Hábito') + '</div>' +
+    DAYS_SHORT.map(d => '<div style="text-align:center">' + d + '</div>').join('') +
+    '<div style="text-align:right">%</div>';
+  card.appendChild(header);
+
+  items.forEach((item, idx) => {
+    const row = document.createElement('div');
+    row.className = 'row';
+    const nameInput = document.createElement('input');
+    nameInput.type = 'text';
+    nameInput.placeholder = kind === 'tareas' ? 'Ej: ordenar escritorio' : 'Ej: meditar 10 min';
+    nameInput.value = item.name;
+    nameInput.addEventListener('input', (e) => {
+      state[kind][idx].name = e.target.value;
+      saveState();
+    });
+    row.appendChild(nameInput);
+
+    item.days.forEach((val, di) => {
+      const box = document.createElement('div');
+      box.className = 'check' + (val ? ' on' : '');
+      box.textContent = '✓';
+      box.addEventListener('click', () => {
+        state[kind][idx].days[di] = !state[kind][idx].days[di];
+        saveState();
+        renderChecklist(kind);
+      });
+      row.appendChild(box);
+    });
+
+    const pct = document.createElement('div');
+    pct.className = 'pct';
+    const done = item.days.filter(Boolean).length;
+    pct.textContent = Math.round(done/7*100) + '%';
+    row.appendChild(pct);
+
+    card.appendChild(row);
+  });
+
+  const addRow = document.createElement('div');
+  addRow.className = 'add-row';
+  addRow.textContent = '+ Agregar ' + (kind === 'tareas' ? 'tarea' : 'hábito');
+  addRow.addEventListener('click', () => {
+    state[kind].push({id: kind+Date.now(), name:'', days:[false,false,false,false,false,false,false]});
+    saveState();
+    renderChecklist(kind);
+  });
+  card.appendChild(addRow);
+
+  const summary = document.getElementById(summaryId);
+  summary.innerHTML = '';
+  DAYS_SHORT.forEach((d, di) => {
+    const total = items.length || 1;
+    const done = items.filter(it => it.days[di]).length;
+    const cell = document.createElement('div');
+    cell.className = 'cell';
+    cell.innerHTML = '<div class="d">' + d + '</div><div class="v">' + Math.round(done/total*100) + '%</div>';
+    summary.appendChild(cell);
+  });
+}
+
+function renderAll(){
+  renderWeek('Semana 1', 'semana1');
+  renderWeek('Semana 2', 'semana2');
+  renderWeek('Semana 3', 'semana3');
+  renderWeek('Semana 4', 'semana4');
+  renderChecklist('tareas');
+  renderChecklist('habitos');
+}
+
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById(tab.dataset.tab).classList.add('active');
+  });
+});
+
+loadState();
+</script>
+</body>
+</html>
