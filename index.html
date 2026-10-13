@@ -198,6 +198,20 @@
     .check{ width:100%; max-width:38px; height:34px; }
     .pct{ font-size:12px; }
   }
+
+  .ics-panel{
+    background:var(--card); border:1px solid var(--border); border-radius:var(--radius);
+    padding:14px; margin:0 0 18px; display:flex; flex-direction:column; gap:8px; max-width:420px;
+  }
+  .ics-panel[hidden]{ display:none; }
+  .ics-panel label{ font-size:11px; font-weight:600; color:var(--text-muted); text-transform:uppercase; letter-spacing:.03em; }
+  .ics-panel input[type=date], .ics-panel select{
+    font-family:inherit; font-size:14px; padding:8px 10px; border-radius:10px;
+    border:1px solid rgba(0,0,0,0.18); background:#fff; color:var(--text); width:100%;
+  }
+  .ics-actions{ display:flex; flex-wrap:wrap; gap:8px; margin-top:4px; }
+  .ics-help{ font-size:12px; color:var(--text-muted); margin:4px 0 0; line-height:1.45; }
+  .ics-error{ font-size:12px; font-weight:600; color:#B3261E; margin:0; }
 </style>
 </head>
 <body>
@@ -208,8 +222,28 @@
   <div class="toolbar">
     <button type="button" class="tool-btn primary" id="btn-descargar">Descargar mi copia</button>
     <button type="button" class="tool-btn" id="btn-cargar">Cargar mi copia</button>
+    <button type="button" class="tool-btn" id="btn-calendar">Enviar actividades a Google Calendar</button>
     <input type="file" id="archivo-copia" accept=".html,.htm,.json,text/html,application/json" hidden="">
     <span class="tool-status" id="estado-copia" role="status" aria-live="polite"></span>
+  </div>
+
+  <div class="ics-panel" id="ics-panel" hidden>
+    <label for="ics-fecha">¿Qué lunes empieza?</label>
+    <input type="date" id="ics-fecha">
+    <label for="ics-cuales">¿Qué querés enviar?</label>
+    <select id="ics-cuales">
+      <option value="todas">Las 4 semanas seguidas</option>
+      <option value="Semana 1">Solo la Semana 1</option>
+      <option value="Semana 2">Solo la Semana 2</option>
+      <option value="Semana 3">Solo la Semana 3</option>
+      <option value="Semana 4">Solo la Semana 4</option>
+    </select>
+    <p class="ics-error" id="ics-error" role="alert"></p>
+    <div class="ics-actions">
+      <button type="button" class="tool-btn primary" id="ics-generar">Descargar para Google Calendar</button>
+      <button type="button" class="tool-btn" id="ics-cancelar">Cancelar</button>
+    </div>
+    <p class="ics-help">Se descarga un archivo. Después, en la compu: calendar.google.com, ⚙ Configuración, Importar y exportar, Importar, y elegís ese archivo. En el celular, probá abriendo el archivo descargado.</p>
   </div>
 
   <div class="tabs">
@@ -853,6 +887,119 @@ document.querySelectorAll('.tab').forEach(tab => {
   ACTIVITY_LIST.forEach(a => { const o = document.createElement('option'); o.value = a; dl.appendChild(o); });
   document.body.appendChild(dl);
 })();
+
+// ---------- Enviar actividades a Google Calendar (archivo .ics) ----------
+function pad2(n){ return String(n).padStart(2, '0'); }
+function icsEscape(t){
+  return String(t).replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n');
+}
+function icsFold(line){
+  const out = [];
+  while(line.length > 70){ out.push(line.slice(0, 70)); line = ' ' + line.slice(70); }
+  out.push(line);
+  return out.join('\r\n');
+}
+function icsDate(d){ return d.getFullYear() + pad2(d.getMonth() + 1) + pad2(d.getDate()); }
+function icsDateTime(d, hhmm){
+  const m = /^(\d{1,2}):(\d{2})$/.exec(hhmm);
+  return icsDate(d) + 'T' + pad2(m[1]) + m[2] + '00';
+}
+function validTime(t){
+  const m = /^(\d{1,2}):(\d{2})$/.exec(String(t || ''));
+  return !!m && +m[1] <= 23 && +m[2] <= 59;
+}
+
+function buildIcs(weekKeys, monday){
+  const now = new Date();
+  const stamp = now.getUTCFullYear() + pad2(now.getUTCMonth() + 1) + pad2(now.getUTCDate()) +
+    'T' + pad2(now.getUTCHours()) + pad2(now.getUTCMinutes()) + pad2(now.getUTCSeconds()) + 'Z';
+  const TZ = 'America/Argentina/Buenos_Aires';
+  const lines = [
+    'BEGIN:VCALENDAR', 'VERSION:2.0',
+    'PRODID:-//El Cuidador Invisible//Metodologia diaria//ES',
+    'CALSCALE:GREGORIAN', 'METHOD:PUBLISH',
+    'X-WR-CALNAME:Mi metodología diaria',
+    'BEGIN:VTIMEZONE', 'TZID:' + TZ,
+    'BEGIN:STANDARD', 'DTSTART:19700101T000000', 'TZOFFSETFROM:-0300', 'TZOFFSETTO:-0300', 'TZNAME:-03', 'END:STANDARD',
+    'END:VTIMEZONE'
+  ];
+  let count = 0;
+  weekKeys.forEach((wk, wi) => {
+    const sched = (state.schedule && state.schedule[wk]) || {};
+    DAYS.forEach((day, di) => {
+      const blocks = Array.isArray(sched[day]) ? sched[day] : [];
+      blocks.forEach((b, bi) => {
+        if(!b || !b.activity || !validTime(b.start) || !validTime(b.end)) return;
+        const startDay = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + wi * 7 + di);
+        const endDay = new Date(startDay.getTime());
+        const toMin = t => { const p = t.split(':'); return +p[0] * 60 + +p[1]; };
+        if(toMin(b.end) <= toMin(b.start)) endDay.setDate(endDay.getDate() + 1);
+        lines.push(
+          'BEGIN:VEVENT',
+          'UID:ci-' + icsDate(startDay) + '-' + pad2(bi) + '-' + pad2(b.start.replace(':', '')) + '@metodologia-cuidador-invisible',
+          'DTSTAMP:' + stamp,
+          'DTSTART;TZID=' + TZ + ':' + icsDateTime(startDay, b.start),
+          'DTEND;TZID=' + TZ + ':' + icsDateTime(endDay, b.end),
+          'SUMMARY:' + icsEscape(b.activity),
+          'END:VEVENT'
+        );
+        count++;
+      });
+    });
+  });
+  lines.push('END:VCALENDAR');
+  return { text: lines.map(icsFold).join('\r\n') + '\r\n', count: count };
+}
+
+function nextMondayValue(){
+  const d = new Date();
+  const add = (8 - d.getDay()) % 7 || 7;
+  d.setDate(d.getDate() + add);
+  return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+}
+
+function openIcsPanel(){
+  const panel = document.getElementById('ics-panel');
+  const fecha = document.getElementById('ics-fecha');
+  if(!fecha.value) fecha.value = nextMondayValue();
+  document.getElementById('ics-error').textContent = '';
+  panel.hidden = false;
+}
+function closeIcsPanel(){ document.getElementById('ics-panel').hidden = true; }
+
+function downloadIcs(){
+  const err = document.getElementById('ics-error');
+  err.textContent = '';
+  const val = document.getElementById('ics-fecha').value;
+  const parts = /^(\d{4})-(\d{2})-(\d{2})$/.exec(val || '');
+  if(!parts){ err.textContent = 'Elegí la fecha del lunes en que empieza.'; return; }
+  const monday = new Date(+parts[1], +parts[2] - 1, +parts[3]);
+  if(monday.getDay() !== 1){ err.textContent = 'Esa fecha no es lunes. Elegí un lunes.'; return; }
+  const which = document.getElementById('ics-cuales').value;
+  const weekKeys = which === 'todas' ? ['Semana 1', 'Semana 2', 'Semana 3', 'Semana 4'] : [which];
+  try{
+    const res = buildIcs(weekKeys, monday);
+    if(!res.count){ err.textContent = 'No hay actividades con horario en lo que elegiste.'; return; }
+    const blob = new Blob([res.text], {type:'text/calendar;charset=utf-8'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'mis-actividades-' + val + '.ics';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+    closeIcsPanel();
+    setStatus('Listo, se descargó el archivo con ' + res.count + ' actividades. Ahora importalo en Google Calendar.');
+  }catch(e){
+    console.error('Error al armar el archivo de calendario', e);
+    err.textContent = 'No se pudo armar el archivo en este navegador.';
+  }
+}
+
+document.getElementById('btn-calendar').addEventListener('click', openIcsPanel);
+document.getElementById('ics-cancelar').addEventListener('click', closeIcsPanel);
+document.getElementById('ics-generar').addEventListener('click', downloadIcs);
 
 document.getElementById('btn-descargar').addEventListener('click', downloadCopy);
 const fileInput = document.getElementById('archivo-copia');
